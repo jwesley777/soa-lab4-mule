@@ -1,0 +1,42 @@
+{
+  "ticketList": [
+    {
+      "price": "84.16",
+      "person": {
+        
+      },
+      "name": "Alva",
+      "coordinates": {
+        
+      },
+      "discount": "nulla",
+      "id": "10e3c227d4414ae1aaa",
+      "creationDate": "minim",
+      "type": "ut",
+      "": {
+        
+      }
+    },
+    {
+      "price": "44.7",
+      "person": {
+        
+      },
+      "name": "Alberto",
+      "coordinates": {
+        
+      },
+      "discount": "ea",
+      "id": "7f46ca1730a647e89e9",
+      "creationDate": "veritatis",
+      "type": "Sed",
+      "": {
+        
+      }
+    }
+  ],
+  "count": 47,
+  "": {
+    
+  }
+}

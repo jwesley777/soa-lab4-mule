@@ -1,0 +1,310 @@
+#%RAML 1.0
+title: lab4
+mediaType:
+  - application/xml
+protocols:
+  - HTTPS
+baseUri: /
+
+/tickets/{id}:
+  get:
+    displayName: Get ticket
+    responses:
+      200:
+        body:
+          type: object
+    securedBy: []
+  delete:
+    displayName: Delete ticket
+    responses:
+      200: {}
+    securedBy: []
+/tickets:
+  get:
+    displayName: Get tickets
+    queryParameters:
+      perPage?:
+        example: 1
+        type: number
+        format: int        
+      curPage?:
+        example: 1
+        type: number
+        format: int
+      sortBy?:
+        example: Example
+        type: string
+      filterBy?:
+        example: Example
+        type: string
+    responses:
+      200:
+        body:
+          type: object
+    securedBy: []    
+  post:
+    displayName: Post ticket
+    body:
+      type: ticketDTOList
+    responses:
+      200: {}
+    securedBy: []
+  put:
+    displayName: Update ticket
+    body:
+      type: ticketDTOList
+    responses:
+      200: {}
+    securedBy: []
+    
+/persons/{id}:
+  get:
+    displayName: Get person
+    responses:
+      200:
+        body:
+          type: object
+    securedBy: []
+/persons:
+  get:
+    displayName: Get persons
+    responses:
+      200:
+        body:
+          type: object
+    securedBy: []    
+  post:
+    displayName: Post person
+    body:
+      type: personDTOList
+    responses:
+      200: {}
+    securedBy: []
+  put:
+    displayName: Update person
+    body:
+      type: personDTOList
+    responses:
+      200: {}
+    securedBy: []
+
+/coordinates/{id}:
+  get:
+    displayName: Get coordinates
+    responses:
+      200:
+        body:
+          type: object
+    securedBy: []
+/coordinates:
+  get:
+    displayName: Get coordinates
+    responses:
+      200:
+        body:
+          type: object
+    securedBy: []    
+  post:
+    displayName: Post coordinates
+    body:
+      type: coordinatesDTOList
+    responses:
+      200: {}
+    securedBy: []
+  put:
+    displayName: Update coordinates
+    body:
+      type: coordinatesDTOList
+    responses:
+      200: {}
+    securedBy: []
+
+/locations/{id}:
+  get:
+    displayName: Get locations
+    responses:
+      200:
+        body:
+          type: object
+    securedBy: []
+/locations:
+  get:
+    displayName: Get locations
+    responses:
+      200:
+        body:
+          type: object
+    securedBy: []    
+  post:
+    displayName: Post locations
+    body:
+      type: locationDTOList
+    responses:
+      200: {}
+    securedBy: []
+  put:
+    displayName: Update locations
+    body:
+      type: locationDTOList
+    responses:
+      200: {}
+    securedBy: []
+
+/additional:
+  get:
+    displayName: Additional tasks
+    queryParameters:
+      person?:
+        type: number
+        format: int
+        example: 1
+      discount?:
+        type: number
+        format: long
+        example: 1
+    responses:
+      200:
+        body:
+          type: object
+    securedBy: []
+
+
+
+types:
+
+  coordinatesDto:
+    properties:
+      id?:
+        example: Example
+        type: string
+      x?:
+        example: Example
+        type: string
+      y?:
+        example: Example
+        type: string
+      
+  ticketDto:
+    properties:
+      id?:
+        example: Example
+        type: string
+      name?:
+        example: Example
+        type: string
+      creationDate?:
+        example: Example
+        type: string
+      discount?:
+        example: Example
+        type: string
+      price?:
+        example: Example
+        type: string
+      type?:
+        example: Example
+        type: string
+      coordinates?:
+        type: coordinatesDto
+      person?:
+        type: personDto
+      
+  countDto:
+    properties:
+      count?:
+        example: 1
+        type: number
+        format: long
+      
+  exceptionDto:
+    properties:
+      message?:
+        example: Example
+        type: string
+      
+  locationDto:
+    properties:
+      id?:
+        example: Example
+        type: string
+      x?:
+        example: Example
+        type: string
+      y?:
+        example: Example
+        type: string
+      name?:
+        example: Example
+        type: string
+      
+  personDto:
+    properties:
+      id?:
+        example: Example
+        type: string
+      height?:
+        example: Example
+        type: string
+      eyeColor?:
+        example: Example
+        type: string
+      location?:
+        type: locationDto
+      
+  ticketTypeDto:
+    properties:
+      type?:
+        example: Example
+        type: string
+      
+  ticketList:
+    properties:
+      ticketList?:
+        type: ticketDto[]
+
+  ticketDTOList:
+    properties:
+      ticketList?:
+        ticketList
+      count?:
+        example: 1
+        type: number
+        format: long
+      
+  personList:
+    properties:
+      personList?:
+        type: personDto[]
+  
+  personDTOList:
+    properties:
+      personList?:
+        personList
+
+  ticketTypes:
+    properties:
+      ticketTypes?:
+        type: ticketTypeDto[]
+      
+  locations:
+    properties:
+      location?:
+        type: locationDto[]
+  
+  locationDTOList:
+    properties:
+      locations?:
+        locations
+      
+  coordinates:
+    properties:
+      coordinate?:
+        type: coordinatesDto[]
+  
+  coordinatesDTOList:
+    properties:
+      coordinates?:
+        coordinates
+
+  
+      

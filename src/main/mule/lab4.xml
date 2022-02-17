@@ -1,0 +1,878 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:apikit-soap="http://www.mulesoft.org/schema/mule/apikit-soap" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:tls="http://www.mulesoft.org/schema/mule/tls" xmlns:wsc="http://www.mulesoft.org/schema/mule/wsc" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd  http://www.mulesoft.org/schema/mule/wsc http://www.mulesoft.org/schema/mule/wsc/current/mule-wsc.xsd http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd http://www.mulesoft.org/schema/mule/apikit-soap http://www.mulesoft.org/schema/mule/apikit-soap/current/mule-apikit-soap.xsd">
+    <http:listener-config name="lab4-httpListenerConfig">
+        <http:listener-connection host="0.0.0.0" port="8081" />
+        <http:listener-interceptors>
+            <http:cors-interceptor>
+                <http:origins>
+                    <http:public-resource />
+                    <http:origin url="www.google.com" accessControlMaxAge="300000000" />
+                </http:origins>
+            </http:cors-interceptor>
+        </http:listener-interceptors>
+    </http:listener-config>
+    <apikit:config name="lab4-config" api="lab4.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <wsc:config name="tickets_ws_config" doc:name="Web Service Consumer Config" doc:id="b04131cf-30b7-48eb-9f8d-5ae6810173bb">
+        <wsc:connection wsdlLocation="http://localhost:8083/tickets?wsdl" service="TicketWebServiceService" port="TicketWebServicePort" address="http://localhost:8083/tickets">
+            <wsc:web-service-security actor="http://schemas.xmlsoap.org/soap/actor/next" />
+        </wsc:connection>
+    </wsc:config>
+    <wsc:config name="addtasks_ws_Config" doc:name="Web Service Consumer Config" doc:id="911415b9-2df5-4710-a067-45cffbc77e1b">
+        <wsc:connection wsdlLocation="http://localhost:8083/addtasks?wsdl" service="AdditionalTasksWebServiceService" port="AdditionalTasksWebServicePort" address="http://localhost:8083/addtasks" />
+    </wsc:config>
+    <wsc:config name="locations_ws_config" doc:name="Web Service Consumer Config" doc:id="bd651b57-ae07-408f-aa95-43de6791093e">
+        <wsc:connection wsdlLocation="http://localhost:8083/locations?wsdl" service="LocationWebServiceService" port="LocationWebServicePort" address="http://localhost:8083/locations" />
+    </wsc:config>
+    <wsc:config name="persons_ws_config" doc:name="Web Service Consumer Config" doc:id="1fc99fb2-bce1-4bdd-a82a-4286d38f6059">
+        <wsc:connection wsdlLocation="http://localhost:8083/persons?wsdl" service="PersonWebServiceService" port="PersonWebServicePort" address="http://localhost:8083/persons">
+            <wsc:web-service-security actor="http://schemas.xmlsoap.org/soap/actor/next" />
+        </wsc:connection>
+    </wsc:config>
+    <wsc:config name="coordinates_ws_config" doc:name="Web Service Consumer Config" doc:id="a6acb644-a082-4b25-bc96-35579a49ef66">
+        <wsc:connection wsdlLocation="http://localhost:8083/coordinates?wsdl" service="CoordinatesWebServiceService" port="CoordinatesWebServicePort" address="http://localhost:8083/coordinates" />
+    </wsc:config>
+    <flow name="lab4-main">
+        <http:listener config-ref="lab4-httpListenerConfig" path="/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body><![CDATA[#[payload]]]></http:body>
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:router config-ref="lab4-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:BAD_REQUEST">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+---
+exceptionDTO:{message: "Bad request"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus"><![CDATA[400]]></ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+---
+exceptionDTO:{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus"><![CDATA[404]]></ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+---
+exceptionDTO:{message: "Method not allowed"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus"><![CDATA[405]]></ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+---
+exceptionDTO:{message: "Not acceptable"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus"><![CDATA[406]]></ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+---
+exceptionDTO:{message: "Unsupported media type"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus"><![CDATA[415]]></ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+---
+exceptionDTO:{message: "Not Implemented"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus"><![CDATA[501]]></ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="lab4-console">
+        <http:listener config-ref="lab4-httpListenerConfig" path="/console/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:console config-ref="lab4-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+---
+exceptionDTO:{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus"><![CDATA[404]]></ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="put:\coordinates:application\xml:lab4-config">
+        <logger level="INFO" message="put:\coordinates:application\xml:lab4-config" />
+        <ee:transform doc:name="Transform Message" doc:id="a7d5ec6e-b9ad-4497-8012-94c31e52f703">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+ns ns0 http://webservices.soa/
+---
+{
+	ns0#updateCoordinate: payload mapObject (v, k, i) -> {arg0: v}
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <wsc:consume operation="updateCoordinate" doc:name="Consume" doc:id="f7f85cd2-c92e-435b-950a-33bfb5fcbd1b" config-ref="coordinates_ws_config" />
+        <error-handler>
+            <on-error-propagate enableNotifications="true" logException="true" doc:name="Copy_of_On Error Propagate" doc:id="73533d3b-3a20-46bb-8274-8f0f274f1e24">
+                <set-variable value="400" doc:name="Copy_of_Set Variable" doc:id="fa33100c-801d-4143-93d0-407031bbb522" variableName="httpStatus" />
+                <ee:transform doc:name="Copy_of_Transform Message" doc:id="68bc94c2-93b0-411c-b59c-0cafe346e309">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+---
+exceptionDTO:{message: error.detailedDescription}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="put:\locations:application\xml:lab4-config">
+        <logger level="INFO" message="put:\locations:application\xml:lab4-config" />
+        <ee:transform doc:name="Transform Message" doc:id="e2ae539a-b1fb-481e-bdcf-43aafeb33fb7">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+ns ns0 http://webservices.soa/
+---
+{
+	ns0#updateLocation: payload mapObject (v, k, i) -> {arg0: v}
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <wsc:consume doc:name="Consume" doc:id="eda467a0-5f20-4cd0-bc42-51658c3f123c" config-ref="locations_ws_config" operation="updateLocation" />
+        <error-handler>
+            <on-error-propagate enableNotifications="true" logException="true" doc:name="Copy_of_On Error Propagate" doc:id="9b44c8c2-adef-473f-8667-e55c1a34831a">
+                <set-variable value="400" doc:name="Copy_of_Set Variable" doc:id="9b288c74-33dd-4321-b2ae-16fe0d8358dc" variableName="httpStatus" />
+                <ee:transform doc:name="Copy_of_Transform Message" doc:id="47126375-27a0-4497-b190-42f76cc40adc">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+---
+exceptionDTO:{message: error.detailedDescription}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="put:\persons:application\xml:lab4-config">
+        <logger level="INFO" message="put:\persons:application\xml:lab4-config" />
+        <ee:transform doc:name="Transform Message" doc:id="5d8154d2-57bf-4a57-81ff-7ad2a07e3313">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+ns ns0 http://webservices.soa/
+---
+{
+	ns0#updatePerson: payload mapObject (v, k, i) -> {arg0: v}
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <wsc:consume operation="updatePerson" doc:name="Consume" doc:id="8bbe648f-9394-4f6c-bee7-c3f3393cebd1" config-ref="persons_ws_config" />
+        <error-handler>
+            <on-error-propagate enableNotifications="true" logException="true" doc:name="Copy_of_On Error Propagate" doc:id="ab71def0-c8f7-4c28-996c-df1a41878e04">
+                <set-variable value="400" doc:name="Copy_of_Set Variable" doc:id="5f31dfb3-009b-4da1-8aea-5421a3557d81" variableName="httpStatus" />
+                <ee:transform doc:name="Copy_of_Transform Message" doc:id="6802aea6-1383-40ef-9e3e-f8186f74b40d">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+---
+exceptionDTO:{message: error.detailedDescription}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="put:\tickets:application\xml:lab4-config">
+        <logger level="INFO" message="put:\tickets:application\xml:lab4-config" />
+        <ee:transform doc:name="Transform Message" doc:id="7d54a2a9-7032-4fd3-bd7c-d5e3d4136979">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+ns ns0 http://webservices.soa/
+---
+{
+	ns0#updateTicket: payload mapObject (v, k, i) -> {arg0: v}
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <wsc:consume doc:name="Consume" doc:id="10296a55-1cfd-47fb-bfac-1bd7ee4090e6" config-ref="tickets_ws_config" operation="updateTicket" />
+        <error-handler>
+            <on-error-propagate enableNotifications="true" logException="true" doc:name="Copy_of_On Error Propagate" doc:id="7ace48a8-5bc9-4502-838c-571f4a0278fe">
+                <set-variable value="400" doc:name="Copy_of_Set Variable" doc:id="ac37f62e-8c9c-4f48-8486-eb183b4d59d4" variableName="httpStatus" />
+                <ee:transform doc:name="Copy_of_Transform Message" doc:id="0c99a3bd-9d99-467b-a28b-9454c3d1f772">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+---
+exceptionDTO:{message: error.detailedDescription}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="delete:\tickets\(id):lab4-config">
+        <set-variable value="#[attributes.uriParams.id]" doc:name="Set Variable" doc:id="8783d969-2507-45b0-b5ea-c86f192b847f" variableName="idToDelete"/>
+        <logger level="INFO" message="delete:\tickets\(id):lab4-config #[payload]" />
+        <wsc:consume operation="deleteTicket" doc:name="Consume" doc:id="4931eab2-7561-4480-8f36-5b04dc513abf" config-ref="tickets_ws_config" >
+			<wsc:message >
+				<wsc:body ><![CDATA[#[output application/xml
+ns ns0 http://webservices.soa/
+---
+{
+	ns0#deleteTicket: {
+		"arg0": vars.idToDelete as String
+	}
+}]]]></wsc:body>
+			</wsc:message>
+		</wsc:consume>
+        <error-handler>
+            <on-error-propagate enableNotifications="true" logException="true" doc:name="Copy_of_On Error Propagate" doc:id="ba139c29-d4fa-4792-b88b-aa03fd6ed646">
+                <set-variable value="400" doc:name="Copy_of_Set Variable" doc:id="4cca86ec-31d4-414e-b864-1b7f9679861c" variableName="httpStatus" />
+                <ee:transform doc:name="Copy_of_Transform Message" doc:id="4e83b6f5-762a-46c3-8003-4bdbea40304b">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+---
+exceptionDTO:{message: error.detailedDescription}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="lab4Flow" doc:id="8d947817-555a-4778-8505-d36ef2b90a33">
+        <ee:transform doc:name="Transform Message" doc:id="8a7e619b-e24e-4467-9ce6-809970eaaa5c">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+{
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+    <flow name="get:\additional:lab4-config">
+        <set-variable value="#[attributes.queryParams.person]" doc:name="setPerson" doc:id="8c0a92af-5b1e-49f5-90d8-bde47402c3ff" variableName="person" />
+        <set-variable value="#[attributes.queryParams.discount]" doc:name="setDiscount" doc:id="fa59ea79-8429-4efc-be2b-8941f9f32462" variableName="discount" />
+        <logger level="INFO" message="get:\additional:lab4-config Vars: #[vars.person] #[vars.discount]" />
+        <choice doc:name="Choice" doc:id="614414e0-169f-4ada-b9a1-4b6bdda3bcfa">
+            <when expression="#[vars.person != null]">
+                <ee:transform doc:name="Transform Message" doc:id="6c76a2a1-90ac-4f13-a4f7-87515648b265">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+ns ns0 http://webservices.soa/
+---
+{
+	ns0#countTicketsByPeopleWithIdLessThan: {
+		arg0: vars.person as Number
+	}
+}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+                <wsc:consume doc:name="Consume" doc:id="6651c59b-cf6c-4426-a378-6e92c96f40ff" config-ref="addtasks_ws_Config" operation="countTicketsByPeopleWithIdLessThan" />
+                <ee:transform doc:name="Transform Message" doc:id="1a304c22-61b8-4860-b073-90613ee48e8e">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+ns ns0 http://webservices.soa/
+---
+countDTO: {
+	count: payload.body.ns0#countTicketsByPeopleWithIdLessThanResponse.return.count
+}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </when>
+            <when expression="#[vars.discount != null]">
+                <ee:transform doc:name="Transform Message" doc:id="0d3e0163-0b08-4522-9c59-8492773c9a3a">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+ns ns0 http://webservices.soa/
+---
+{
+	ns0#findTicketsByDiscountLessThan: {
+		arg0: vars.discount as Number
+	}
+}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+                <wsc:consume doc:name="Consume" doc:id="13a1503b-869c-4982-96d3-14f532513dd8" config-ref="addtasks_ws_Config" operation="findTicketsByDiscountLessThan" />
+                <ee:transform doc:name="Transform Message" doc:id="41d7bc21-e605-4f4e-b4fc-f558a5edb529">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+ns ns0 http://webservices.soa/
+---
+ticketDTOList: {
+	ticketList: {
+		ticketList: payload.body.ns0#findTicketsByDiscountLessThanResponse.return.ticketList.*ticketList map (item, index) -> {
+			"id": item.id,
+			"name": item.name,
+			"creationDate": item.creationDate,
+			"coordinates": item.coordinates,
+			"discount": item.discount,
+			"price": item.price,
+			"type": item."type",
+			"person": item.person
+	}},
+	count: payload.body.ns0#findTicketsByDiscountLessThanResponse.return.count
+}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </when>
+            <otherwise>
+                <wsc:consume operation="getDistinctTicketTypes" doc:name="Consume" doc:id="41e76269-a98c-4c41-a159-1fd887675472" config-ref="addtasks_ws_Config" />
+                <ee:transform doc:name="Transform Message" doc:id="a389ac84-de3a-4217-a9e0-1fcebd1c5da4">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+ns ns0 http://webservices.soa/
+---
+ticketTypeDTOList: {
+	ticketTypes: {
+		ticketType: payload.body.ns0#getDistinctTicketTypesResponse.return.ticketTypes.*ticketType map (item, index) -> {
+			"type": item."type"
+	}}
+}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </otherwise>
+        </choice>
+        <error-handler>
+            <on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="bce0ada8-0c25-455f-a945-af2f7cbcbfcd">
+                <set-variable value="500" doc:name="Set Variable" doc:id="5772c051-3647-4e14-be20-eb661a3747a7" variableName="httpStatus" />
+                <ee:transform doc:name="Transform Message" doc:id="45b5cbd8-de76-413e-856a-3365f37ed7d9">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+---
+exceptionDTO:{message: error.detailedDescription}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="get:\coordinates:lab4-config">
+        <logger level="INFO" message="get:\coordinates:lab4-config" />
+        <wsc:consume operation="getCoordinates" doc:name="Consume" doc:id="794843ef-f9b0-4af4-9032-3a50bf277b18" config-ref="coordinates_ws_config" />
+        <ee:transform doc:name="Transform Message" doc:id="ae11e8d6-dea2-49af-a912-b44597772815">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+ns ns0 http://webservices.soa/
+---
+coordinatesDTOList: {
+	coordinates: {
+		coordinate: payload.body.ns0#getCoordinatesResponse.return.coordinates.*coordinate map (item, index) -> {
+			"id": item.id,
+			"x": item.x,
+			"y": item.y
+
+	}}
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <error-handler>
+            <on-error-propagate enableNotifications="true" logException="true" doc:name="Copy_of_On Error Propagate" doc:id="6f7cc39e-227b-4863-9c20-160d34e49e43">
+                <set-variable value="400" doc:name="Copy_of_Set Variable" doc:id="88fef35e-6bf4-45d6-9581-c963a5ef44d1" variableName="httpStatus" />
+                <ee:transform doc:name="Copy_of_Transform Message" doc:id="bd1eeffb-bb19-486a-be62-7829e33d8eee">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+---
+exceptionDTO:{message: error.detailedDescription}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="get:\coordinates\(id):lab4-config">
+        <set-variable value="#[attributes.uriParams.id]" doc:name="Set Variable" doc:id="960b07bc-2a2f-475a-8427-be357c478e78" variableName="setId"/>
+		<logger level="INFO" message="get:\coordinates\(id):lab4-config" />
+        <wsc:consume doc:name="Consume" doc:id="58097281-9d3e-4e09-b1ee-95c307c40af5" config-ref="coordinates_ws_config" operation="getCoordinate">
+			<wsc:message >
+				<wsc:body ><![CDATA[#[output application/xml
+ns ns0 http://webservices.soa/
+---
+{
+	ns0#getCoordinate: {
+		"arg0": vars.setId as String
+	}
+}]]]></wsc:body>
+			</wsc:message>
+		</wsc:consume>
+		<ee:transform doc:name="Transform Message" doc:id="955c733c-72e7-4361-a087-b374bbb5660c" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/xml
+ns ns0 http://webservices.soa/
+---
+coordinatesDTOList: {
+	coordinates: {
+		coordinate: payload.body.ns0#getCoordinateResponse.return.coordinates.*coordinate map (item, index) -> {
+			"id": item.id,
+			"x": item.x,
+			"y": item.y
+
+	}}
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<error-handler>
+            <on-error-propagate enableNotifications="true" logException="true" doc:name="Copy_of_On Error Propagate" doc:id="4ecb532a-831e-4801-ab1d-68c723fa6c00">
+                <set-variable value="400" doc:name="Copy_of_Set Variable" doc:id="1a9a9da6-9d70-4259-bcdf-f9b5d2a9714d" variableName="httpStatus" />
+                <ee:transform doc:name="Copy_of_Transform Message" doc:id="c5fa1090-3c22-48b2-b843-28740c4b4b08">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+---
+exceptionDTO:{message: error.detailedDescription}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="get:\locations:lab4-config">
+        <logger level="INFO" message="get:\locations:lab4-config" />
+        <wsc:consume operation="getLocations" doc:name="Consume" doc:id="6ce3e49c-26a4-4976-8f15-076c2cc37471" config-ref="locations_ws_config" />
+        <ee:transform doc:name="Transform Message" doc:id="d1d6f12c-16b8-43aa-9a84-7784475f428c">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+ns ns0 http://webservices.soa/
+---
+locationDTOList: {
+	locations: {
+		location: payload.body.ns0#getLocationsResponse.return.locations.*location map (item, index) -> {
+			"id": item.id,
+			"x": item.x,
+			"y": item.y,
+			"name": item.name
+
+	}}
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <error-handler>
+            <on-error-propagate enableNotifications="true" logException="true" doc:name="Copy_of_On Error Propagate" doc:id="d8db936f-5d53-424b-91da-3611c6e5bc59">
+                <set-variable value="400" doc:name="Copy_of_Set Variable" doc:id="14ced1c1-086c-4891-8bd4-bb674ed5b401" variableName="httpStatus" />
+                <ee:transform doc:name="Copy_of_Transform Message" doc:id="ef182e91-1012-4b22-a9ff-b36e1ee64c50">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+---
+exceptionDTO:{message: error.detailedDescription}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="get:\locations\(id):lab4-config">
+        <set-variable value="#[attributes.uriParams.id]" doc:name="Set Variable" doc:id="d74229e8-bea1-41ca-ba1f-137726da06ca" variableName="setId"/>
+        <logger level="INFO" message="get:\locations\(id):lab4-config" />
+        <wsc:consume doc:name="Consume" doc:id="b9648e7e-b4c6-441a-8329-a69c2c56371f" config-ref="locations_ws_config" operation="getLocation">
+			<wsc:message >
+				<wsc:body ><![CDATA[#[output application/xml
+ns ns0 http://webservices.soa/
+---
+{
+	ns0#getLocation: {
+		"arg0": vars.setId as String
+	}
+}]]]></wsc:body>
+			</wsc:message>
+		</wsc:consume>
+		<ee:transform doc:name="Transform Message" doc:id="f7b19ab3-e68b-4f64-bc8c-0d8d9033ac1d" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/xml
+ns ns0 http://webservices.soa/
+---
+locationDTOList: {
+	locations: {
+		location: payload.body.ns0#getLocationResponse.return.locations.*location map (item, index) -> {
+			"id": item.id,
+			"x": item.x,
+			"y": item.y,
+			"name": item.name
+
+	}}
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<error-handler>
+            <on-error-propagate enableNotifications="true" logException="true" doc:name="Copy_of_On Error Propagate" doc:id="d4799d32-2ab1-4ac1-8b28-a8ebce19467f">
+                <set-variable value="400" doc:name="Copy_of_Set Variable" doc:id="a453132c-8bff-4e20-8403-21f5fa510bb6" variableName="httpStatus" />
+                <ee:transform doc:name="Copy_of_Transform Message" doc:id="5dc571be-10ab-4ab6-9264-c7e9e4c13133">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+---
+exceptionDTO:{message: error.detailedDescription}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="get:\persons:lab4-config">
+        <logger level="INFO" message="get:\persons:lab4-config" />
+        <wsc:consume operation="getPersons" doc:name="Consume" doc:id="404c8d5a-25cc-45c4-8678-491c9129db4d" config-ref="persons_ws_config" />
+        <ee:transform doc:name="Transform Message" doc:id="9da678b0-6975-46b5-aca4-44268dea9b72">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+ns ns0 http://webservices.soa/
+---
+personDTOList: {
+	personList: {
+		personList: payload.body.ns0#getPersonsResponse.return.personList.*personList map (item, index) -> {
+			"id": item.id,
+			"height": item.height,
+			"eyeColor": item.eyeColor,
+			"location": item.location
+
+	}}
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <error-handler>
+            <on-error-propagate enableNotifications="true" logException="true" doc:name="Copy_of_On Error Propagate" doc:id="ed25d24d-3f61-45d1-9906-8353471a0fe9">
+                <set-variable value="400" doc:name="Copy_of_Set Variable" doc:id="51430773-1517-4bd2-8896-1fc57ab774aa" variableName="httpStatus" />
+                <ee:transform doc:name="Copy_of_Transform Message" doc:id="a5b9e558-9871-4a8a-9fda-9c37d78063ee">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+---
+exceptionDTO:{message: error.detailedDescription}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="get:\persons\(id):lab4-config">
+        <set-variable value="#[attributes.uriParams.id]" doc:name="Set Variable" doc:id="b8dd9147-186a-4565-af0b-6e1e35ff1554" variableName="setId"/>
+        <logger level="INFO" message="get:\persons\(id):lab4-config" />
+        <wsc:consume doc:name="Consume" doc:id="8b24451c-35a3-4450-b6cc-185d63d12cc9" config-ref="persons_ws_config" operation="getPerson">
+			<wsc:message >
+				<wsc:body ><![CDATA[#[output application/xml
+ns ns0 http://webservices.soa/
+---
+{
+	ns0#getPerson: {
+		"arg0": vars.setId as String
+	}
+}]]]></wsc:body>
+			</wsc:message>
+		</wsc:consume>
+		<ee:transform doc:name="Transform Message" doc:id="9d26d7e5-0cbd-40fd-ad34-dfe8f93cf262" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/xml
+ns ns0 http://webservices.soa/
+---
+personDTOList: {
+	personList: {
+		personList: payload.body.ns0#getPersonResponse.return.personList.*personList map (item, index) -> {
+			"id": item.id,
+			"height": item.height,
+			"eyeColor": item.eyeColor,
+			"location": item.location
+
+	}}
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<error-handler>
+            <on-error-propagate enableNotifications="true" logException="true" doc:name="Copy_of_On Error Propagate" doc:id="da236f40-893c-4e84-84cf-89a44e4a1d24">
+                <set-variable value="400" doc:name="Copy_of_Set Variable" doc:id="b88e1920-b696-4530-aeef-1c4bb5c68cfa" variableName="httpStatus" />
+                <ee:transform doc:name="Copy_of_Transform Message" doc:id="5e3bda14-d4d4-4f3e-b41a-3ff90ff99896">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+---
+exceptionDTO:{message: error.detailedDescription}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="get:\tickets:lab4-config">
+        <logger level="INFO" message="get:\tickets:lab4-config" />
+        <ee:transform doc:name="Transform Message" doc:id="abe14bbe-f42a-479f-899a-78627f209b2a">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/xml skipNullOn="everywhere"
+ns ns0 http://webservices.soa/
+---
+{
+	ns0#getTickets: {
+		arg0: attributes.queryParams.perPage,
+		arg1: attributes.queryParams.curPage,
+		arg2: attributes.queryParams.sortBy,
+		arg3: attributes.queryParams.filterBy
+	}
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <wsc:consume operation="getTickets" doc:name="Consume" doc:id="e215b811-e248-4c46-961c-b011880ab717" config-ref="tickets_ws_config" />
+        <ee:transform doc:name="Transform Message" doc:id="9d764632-c17c-41de-8357-8e81ce2e1709">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+ns ns0 http://webservices.soa/
+---
+ticketDTOList: {
+	ticketList: {
+		ticketList: payload.body.ns0#getTicketsResponse.return.ticketList.*ticketList map (item, index) -> {
+			"id": item.id,
+			"name": item.name,
+			"creationDate": item.creationDate,
+			"coordinates": item.coordinates,
+			"discount": item.discount,
+			"price": item.price,
+			"type": item."type",
+			"person": item.person
+	}},
+	count: payload.body.ns0#getTicketsResponse.return.count
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <error-handler>
+            <on-error-propagate enableNotifications="true" logException="true" doc:name="Copy_of_On Error Propagate" doc:id="e08c5e89-bf87-410e-824a-89d57606cb2c">
+                <set-variable value="400" doc:name="Copy_of_Set Variable" doc:id="aa3d087d-b2f6-40c1-87ac-64fef5b86b46" variableName="httpStatus" />
+                <ee:transform doc:name="Copy_of_Transform Message" doc:id="9414a4aa-f1b0-4a65-8039-70c9f99e592d">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+---
+exceptionDTO:{message: error.detailedDescription}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="get:\tickets\(id):lab4-config">
+        <set-variable value="#[attributes.uriParams.id]" doc:name="Set Variable" doc:id="b24cd99e-ec57-4447-a2b9-34a5418aa6d0" variableName="setId"/>
+        <logger level="INFO" message="get:\tickets\(id):lab4-config" />
+        <wsc:consume operation="getTicket" doc:name="Consume" doc:id="d1dc0745-09e6-4cc0-9a85-b5e7f7514108" config-ref="tickets_ws_config">
+			<wsc:message >
+				<wsc:body ><![CDATA[#[output application/xml
+ns ns0 http://webservices.soa/
+---
+{
+	ns0#getTicket: {
+		"arg0": vars.setId
+	}
+}]]]></wsc:body>
+			</wsc:message>
+		</wsc:consume>
+		<ee:transform doc:name="Transform Message" doc:id="51cb0a41-389d-4636-91e2-f6423856ba18" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/xml
+ns ns0 http://webservices.soa/
+---
+ticketDTOList: {
+	ticketList: {
+		ticketList: payload.body.ns0#getTicketResponse.return.ticketList.*ticketList map (item, index) -> {
+			"id": item.id,
+			"name": item.name,
+			"creationDate": item.creationDate,
+			"coordinates": item.coordinates,
+			"discount": item.discount,
+			"price": item.price,
+			"type": item."type",
+			"person": item.person
+	}},
+	count: payload.body.ns0#getTicketResponse.return.count
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<error-handler>
+            <on-error-propagate enableNotifications="true" logException="true" doc:name="Copy_of_On Error Propagate" doc:id="3e206074-3977-4cda-8142-aadbe5326d74">
+                <set-variable value="400" doc:name="Copy_of_Set Variable" doc:id="323e887c-aea6-44f2-811b-33c1de6edff1" variableName="httpStatus" />
+                <ee:transform doc:name="Copy_of_Transform Message" doc:id="805c873a-b2e7-412f-ba7d-0fb6f639d9e2">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+---
+exceptionDTO:{message: error.detailedDescription}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="post:\coordinates:application\xml:lab4-config">
+        <logger level="INFO" message="post:\coordinates:application\xml:lab4-config" />
+        <ee:transform doc:name="Copy_of_Transform Message" doc:id="ef780621-d967-4504-90a9-21d52a570629">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+ns ns0 http://webservices.soa/
+---
+{
+	ns0#createCoordinate: payload mapObject (v, k, i) -> {arg0: v}
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <wsc:consume operation="createCoordinate" doc:name="Copy_of_Consume" doc:id="6072841d-f941-4130-9625-9c92511a6968" config-ref="coordinates_ws_config" />
+        <error-handler>
+            <on-error-propagate enableNotifications="true" logException="true" doc:name="Copy_of_On Error Propagate" doc:id="ef195479-ed9b-48a1-92a0-8eca5822f5b0">
+                <set-variable value="400" doc:name="Copy_of_Set Variable" doc:id="3ef2e410-87d7-47dd-be56-87f92db21349" variableName="httpStatus" />
+                <ee:transform doc:name="Copy_of_Transform Message" doc:id="f4a86924-21e3-41e3-920b-6fb98361c144">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+---
+exceptionDTO:{message: error.detailedDescription}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="post:\locations:application\xml:lab4-config">
+        <logger level="INFO" message="post:\locations:application\xml:lab4-config" />
+        <ee:transform doc:name="Copy_of_Transform Message" doc:id="01a0d978-b1bb-4adc-af85-22ae67df5137">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+ns ns0 http://webservices.soa/
+---
+{
+	ns0#createLocation: payload mapObject (v, k, i) -> {arg0: v}
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <logger level="INFO" doc:name="Logger" doc:id="a2b438fb-0b00-4ad3-9064-1efa40bdf8cf" message="#[%dw 2.0&#10;ns ns0 http://webservices.soa/&#10;---&#10;payload.ns0#createLocation]"/>
+		<wsc:consume operation="createLocation" doc:name="Copy_of_Consume" doc:id="e37ba21e-984a-4762-9506-a9d7800dd445" config-ref="locations_ws_config" />
+        <error-handler>
+            <on-error-propagate enableNotifications="true" logException="true" doc:name="Copy_of_On Error Propagate" doc:id="342fbdd2-1450-46dd-9c60-06f3ec6dbcb3">
+                <set-variable value="400" doc:name="Copy_of_Set Variable" doc:id="85c1a263-f088-4756-989c-d6c266577803" variableName="httpStatus" />
+                <ee:transform doc:name="Copy_of_Transform Message" doc:id="b9234038-7869-4778-af01-bae3d4078cdd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+---
+exceptionDTO:{message: error.detailedDescription}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="post:\persons:application\xml:lab4-config">
+        <logger level="INFO" message="post:\persons:application\xml:lab4-config" />
+        <ee:transform doc:name="Copy_of_Transform Message" doc:id="281823d3-64c4-4a6e-b911-19c667d12aa7">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+ns ns0 http://webservices.soa/
+---
+{
+	ns0#createPerson: payload mapObject (v, k, i) -> {arg0: v}
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <wsc:consume operation="createPerson" doc:name="Copy_of_Consume" doc:id="08ef40df-e7a0-4afc-8ddc-c34ed28f93e5" config-ref="persons_ws_config" />
+        <error-handler>
+            <on-error-propagate enableNotifications="true" logException="true" doc:name="Copy_of_On Error Propagate" doc:id="7d111c5b-6dd7-4419-a92e-1b14e4d57f29">
+                <set-variable value="400" doc:name="Copy_of_Set Variable" doc:id="4eb96da1-6b98-4a88-aa4a-9419b83e4fc9" variableName="httpStatus" />
+                <ee:transform doc:name="Copy_of_Transform Message" doc:id="1ad17771-1df7-4a24-877f-616c63219207">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+---
+exceptionDTO:{message: error.detailedDescription}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="post:\tickets:application\xml:lab4-config">
+        <logger level="INFO" message="post:\tickets:application\xml:lab4-config" />
+        <ee:transform doc:name="Copy_of_Transform Message" doc:id="8b99234a-8cdf-4153-bf33-f1f18ad94a20">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+ns ns0 http://webservices.soa/
+---
+{
+	ns0#createTicket: payload mapObject (v, k, i) -> {arg0: v}
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <wsc:consume operation="createTicket" doc:name="Copy_of_Consume" doc:id="69f7c9e7-8c7f-4e0f-9592-57c000a0d2d7" config-ref="tickets_ws_config" />
+        <ee:transform doc:name="Transform Message" doc:id="5bf276fc-c58e-4f08-af54-5c508b63c0dd" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/xml
+---
+ok: 1]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<error-handler>
+            <on-error-propagate enableNotifications="true" logException="true" doc:name="Copy_of_On Error Propagate" doc:id="1ab641c6-1642-470b-a444-67585df248ef">
+                <set-variable value="400" doc:name="Copy_of_Set Variable" doc:id="36be2933-4f70-41e6-852d-67fadebc3f70" variableName="httpStatus" />
+                <ee:transform doc:name="Copy_of_Transform Message" doc:id="b83b1fdd-60dd-41d9-93e9-360b31a62dd2">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+---
+exceptionDTO:{message: error.detailedDescription}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+</mule>
